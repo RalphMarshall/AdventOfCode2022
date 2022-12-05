@@ -21,27 +21,55 @@ sub getPriority($) {
 	return 27 + $ord - $upStart;
 }
 
-my $grandTotal = 0;
+sub findCommon(@) {
+	my @hashes = ();
+
+	foreach my $aref (@_) {
+		push(@hashes, getMembers(@$aref));
+	}
+
+	my $firstHash = pop @hashes;
+	foreach my $nextHash (@hashes) {
+		foreach (keys %$firstHash) {
+			delete $firstHash->{$_} unless $nextHash->{$_};
+		}
+	}
+
+	# In theory there should be exactly one value left
+	return (keys %$firstHash)[0];
+}
 
  MAIN: {
 	 open FH, $infile;
+
+	 my $grandTotal = 0;
+	 my @allPacks = ();
 
 	 while (<FH>) {
 		 chomp;
 
 		 my @items = split //;
+		 push @allPacks, \@items;
+
 		 my $leftEnd = ($#items-1)/2;
 
 		 my @left = @items[0..$leftEnd],
 			 @right = @items[$leftEnd+1..$#items];
 
-		 my $hashLeft = getMembers(@left),
-			 $hashRight = getMembers(@right);
-
-		 foreach (keys %$hashLeft) {
-			 $grandTotal += getPriority($_) if $hashRight->{$_};
-		 }
+		 my $commonItem = findCommon(\@left, \@right);
+		 $grandTotal += getPriority($commonItem);
 	 }
 
 	 print "Total priority count is $grandTotal\n";
+
+	 my $badgeTotal = 0;
+	 while (@allPacks) {
+		 my @nextGroup = @allPacks[0..2];
+		 @allPacks = @allPacks[3..$#allPacks];
+
+		 my $badge = findCommon(@nextGroup);
+		 $badgeTotal += getPriority($badge);
+	 }
+
+	 print "Badge total is $badgeTotal\n";
 }
